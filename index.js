@@ -899,11 +899,11 @@ app.get('/api/analytics/weekly', async (req, res) => {
 // ----------------- OTA UPDATE ENDPOINTS -----------------
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.0',
-    versionCode: 1,
+    version: '1.9',
+    versionCode: 9,
     bundleUrl: `http://${req.headers.host}/api/bundle`,
-    minVersion: '1.0',
-    notes: 'Team Sarkar Companion v1.0 Production Release with MongoDB Atlas Sync.'
+    minVersion: '1.9',
+    notes: 'Team Sarkar Companion v1.9 Production Release with Groq AI Insights & 0 State.'
   });
 });
 
