@@ -13,6 +13,42 @@ const DB_NAME = 'teamsarkar_db';
 app.use(cors());
 app.use(express.json());
 
+// Root health check endpoint
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Team Sarkar Backend Server</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F19; color: #F8FAFC; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+          .card { background: #161F30; border: 1px solid #1E293B; border-radius: 20px; padding: 40px; text-align: center; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+          .status { display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 800; font-size: 13px; padding: 6px 14px; border-radius: 999px; margin-bottom: 20px; }
+          .dot { width: 8px; height: 8px; background: #10B981; border-radius: 50%; }
+          h1 { margin: 0 0 10px 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px; }
+          p { color: #94A3B8; font-size: 14px; margin: 0 0 24px 0; line-height: 1.5; }
+          .meta { background: #0F172A; border-radius: 12px; padding: 14px; text-align: left; font-size: 12px; color: #CBD5E1; }
+          .meta-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+          .meta-row:last-child { margin-bottom: 0; }
+          .label { color: #64748B; font-weight: 600; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="status"><span class="dot"></span> SERVER ACTIVE & HEALTHY</div>
+          <h1>TEAM SARKAR API</h1>
+          <p>Production Backend Server & MongoDB Atlas Cloud Synchronization for FF Esports Mobile Companion.</p>
+          <div class="meta">
+            <div class="meta-row"><span class="label">Database:</span> <span>MongoDB Atlas (teamsarkar_db)</span></div>
+            <div class="meta-row"><span class="label">Master Admin:</span> <span>ASHISH800</span></div>
+            <div class="meta-row"><span class="label">Status:</span> <span style="color: #10B981;">Online & Connected</span></div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 let db = null;
 let client = null;
 
