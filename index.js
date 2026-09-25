@@ -34,60 +34,20 @@ async function initDB() {
     db = client.db(DB_NAME);
     console.log(`[MongoDB] Connected successfully to Atlas database: ${DB_NAME}`);
 
-    // Seed master user 'ashish800' and initial roster if users collection is empty
+    // Seed ONLY master user 'ASHISH800' with password 'ASHISH8006' if users collection is empty
     const userCount = await db.collection('users').countDocuments();
     if (userCount === 0) {
-      console.log('[Seed] Seeding master user ashish800 and initial team data...');
+      console.log('[Seed] Seeding only master user ASHISH800...');
       const masterUser = {
         userId: 'ASHISH800',
         name: 'Ashish Sarkar',
         email: 'ashish800@teamsarkar.com',
-        passwordHash: hashPassword('password123'),
+        passwordHash: hashPassword('ASHISH8006'),
         role: 'IGL',
         isMaster: true,
         createdAt: new Date()
       };
-      const playerAsh = {
-        userId: 'ASH',
-        name: 'Ash',
-        email: 'ash@teamsarkar.com',
-        passwordHash: hashPassword('password123'),
-        role: 'PLAYER',
-        isMaster: false,
-        createdAt: new Date()
-      };
-      await db.collection('users').insertMany([masterUser, playerAsh]);
-
-      // Seed default active players
-      const defaultPlayers = [
-        { id: 1, playerName: 'ASH', ign: 'SRK•ASH⚡', teamRole: 'Rusher', status: 'Active', avatarUrl: '/assets/avatar_ash.png', joinedAt: '18 Sept 2026', roleHistory: [{ role: 'Secondary Rusher', startedAt: '18 Sept 2026', endedAt: '22 Sept 2026' }, { role: 'Rusher', startedAt: '22 Sept 2026', endedAt: null }] },
-        { id: 2, playerName: 'KAI', ign: 'SRK•KAI⚔', teamRole: '2nd Rusher', status: 'Active', avatarUrl: '/assets/avatar_kai.png', joinedAt: '18 Sept 2026', roleHistory: [{ role: '2nd Rusher', startedAt: '18 Sept 2026', endedAt: null }] },
-        { id: 3, playerName: 'VEX', ign: 'SRK•VEX💣', teamRole: 'Naider', status: 'Active', avatarUrl: '/assets/avatar_vex.png', joinedAt: '20 Sept 2026', roleHistory: [{ role: 'Naider', startedAt: '20 Sept 2026', endedAt: null }] },
-        { id: 4, playerName: 'ZORO', ign: 'SRK•ZORO🗡', teamRole: 'Assaulter', status: 'Active', avatarUrl: '/assets/avatar_zoro.png', joinedAt: '22 Sept 2026', roleHistory: [{ role: 'Assaulter', startedAt: '22 Sept 2026', endedAt: null }] }
-      ];
-      await db.collection('players').insertMany(defaultPlayers);
-
-      // Matches start empty (User records real matches)
-      // No dummy matches seeded as requested
-
-      // Seed tournaments
-      await db.collection('tournaments').insertMany([
-        { id: 1, name: 'TEAM SARKAR SCRIM CUP', date: '25 Sept 2026', status: 'Completed', notes: 'Tier-1 invitational scrims.' },
-        { id: 2, name: 'FREE FIRE PREMIER LEAGUE', date: '24 Sept 2026', status: 'Completed', notes: 'Regional qualifier group stages.' },
-        { id: 3, name: 'PRO INVITATIONAL SERIES', date: '21 Sept 2026', status: 'Completed', notes: 'Weekly community cup.' }
-      ]);
-
-      // Seed practice sessions
-      await db.collection('practice_sessions').insertMany([
-        { id: 1, date: '25 Sept 2026', durationMinutes: 90, focus: 'Rush, Rotation, Grenades, Communication', notes: 'Drilled 4-man entry on Clock Tower and Nexterra.', mistakes: 'Over-extending without smoke wall.', positiveObservations: 'Vex grenade timing spot on.' },
-        { id: 2, date: '24 Sept 2026', durationMinutes: 120, focus: 'Late Zone Positioning & Crossfire', notes: 'Focus on 2-2 split hold during zone 4 shrink.', mistakes: 'Lost 1 man early to flank.', positiveObservations: 'Trade kill speed under 1.5 seconds.' }
-      ]);
-
-      // Seed notes
-      await db.collection('notes').insertMany([
-        { id: 1, title: 'Late Zone Micro-rotations', note: 'Good early fight on Bermuda Clock Tower but maintain triangular spacing.', category: 'Strategy', createdAt: '25 Sept 2026, 09:00 PM', authorName: 'ASHISH800 (IGL)' },
-        { id: 2, title: 'Kalahari High Ground Drill', note: 'Kalahari command post provides 360 degree coverage. Hold upper ramp with gloo walls.', category: 'Observation', createdAt: '25 Sept 2026, 08:00 PM', authorName: 'ASHISH800 (IGL)' }
-      ]);
+      await db.collection('users').insertOne(masterUser);
     }
   } catch (err) {
     console.error('[MongoDB Error]', err);
