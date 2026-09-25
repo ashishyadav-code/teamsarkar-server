@@ -59,7 +59,7 @@ function hashPassword(password) {
 function isMasterAdmin(userId, email = '') {
   const uid = (userId || '').trim().toLowerCase();
   const em = (email || '').trim().toLowerCase();
-  return uid === 'ashish800' || em.includes('ashish800');
+  return uid === 'ashish' || uid === 'ashish800' || em.includes('ashish');
 }
 
 // Connect to MongoDB Atlas
@@ -229,19 +229,20 @@ app.post('/api/login', async (req, res) => {
 
     const isMaster = isMasterAdmin(loginId);
     if (isMaster) {
-      if (password !== 'ASHISH8006') {
+      const passClean = (password || '').trim();
+      if (passClean.toUpperCase() !== 'ASHISH' && passClean !== 'ASHISH8006') {
         return res.status(401).json({ error: 'Invalid master IGL password.' });
       }
       return res.json({
         success: true,
-        access_token: 'ASHISH800',
+        access_token: 'ASHISH',
         token_type: 'bearer',
         user: {
-          id: 'ASHISH800',
-          userId: 'ASHISH800',
-          username: 'ASHISH800',
-          name: 'Ashish Sarkar (Master IGL)',
-          email: 'ashish800@teamsarkar.com',
+          id: 'ASHISH',
+          userId: 'ASHISH',
+          username: 'ASHISH',
+          name: 'Ashish (Master IGL)',
+          email: 'ashish@teamsarkar.com',
           role: 'IGL',
           isMaster: true
         }

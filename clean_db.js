@@ -17,19 +17,19 @@ async function cleanAll() {
     console.log(`Deleted ${res.deletedCount} from ${c}`);
   }
 
-  // Clear users and seed ONLY ASHISH800 with password ASHISH8006
+  // Clear users and seed ONLY ASHISH with password ASHISH
   await db.collection('users').deleteMany({});
   const masterUser = {
-    userId: 'ASHISH800',
-    name: 'Ashish Sarkar',
-    email: 'ashish800@teamsarkar.com',
-    passwordHash: hashPassword('ASHISH8006'),
+    userId: 'ASHISH',
+    name: 'Ashish',
+    email: 'ashish@teamsarkar.com',
+    passwordHash: hashPassword('ASHISH'),
     role: 'IGL',
     isMaster: true,
     createdAt: new Date()
   };
   await db.collection('users').insertOne(masterUser);
-  console.log('MongoDB reset complete. Only ASHISH800 (password: ASHISH8006) exists.');
+  console.log('MongoDB reset complete. Only ASHISH (password: ASHISH) exists.');
 
   const remainingUsers = await db.collection('users').find({}).toArray();
   console.log('Remaining users:', remainingUsers.map(u => ({ userId: u.userId, role: u.role, isMaster: u.isMaster })));
