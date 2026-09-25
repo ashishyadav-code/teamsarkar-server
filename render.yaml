@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: teamsarkar-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: MONGO_URI
+        value: mongodb+srv://ashishyadav14065_db_user:vyONlYEINPa4T1Qt@cluster0.r51zmz3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
