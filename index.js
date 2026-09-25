@@ -899,11 +899,11 @@ app.get('/api/analytics/weekly', async (req, res) => {
 // ----------------- OTA UPDATE ENDPOINTS -----------------
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.9',
-    versionCode: 9,
+    version: '2.0',
+    versionCode: 20,
     bundleUrl: `http://${req.headers.host}/api/bundle`,
-    minVersion: '1.9',
-    notes: 'Team Sarkar Companion v1.9 Production Release with Groq AI Insights & 0 State.'
+    minVersion: '2.0',
+    notes: 'Team Sarkar Companion v2.0 Production Release with Login Guard, Zero-Data Insights & Telemetry.'
   });
 });
 
