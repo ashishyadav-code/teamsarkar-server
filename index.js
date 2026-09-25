@@ -472,18 +472,21 @@ app.get('/api/players', async (req, res) => {
       let totalDeaths = 0;
       let totalAssists = 0;
       let matchesCount = 0;
+      let totalSurvival = 0;
 
       allMatches.forEach(m => {
-        const stat = (m.playerStats || []).find(ps => ps.playerId === p.id);
+        const stat = (m.playerStats || []).find(ps => ps.playerId === p.id || (ps.player_name && ps.player_name.toLowerCase() === (p.playerName || '').toLowerCase()));
         if (stat) {
           matchesCount++;
           totalKills += stat.kills || 0;
           totalDeaths += stat.deaths || 0;
           totalAssists += stat.assists || 0;
+          totalSurvival += stat.survivalPercent || stat.survival_percent || (m.placement === 1 ? 100 : 0);
         }
       });
 
-      const kd = Number((totalKills / Math.max(1, totalDeaths)).toFixed(1));
+      const kd = matchesCount > 0 ? Number((totalKills / Math.max(1, totalDeaths)).toFixed(1)) : 0.0;
+      const survivalRate = matchesCount > 0 ? Math.round(totalSurvival / matchesCount) : 0;
 
       return {
         id: p.id,
@@ -498,7 +501,7 @@ app.get('/api/players', async (req, res) => {
         total_kills: totalKills,
         total_assists: totalAssists,
         total_deaths: totalDeaths,
-        survival_rate: 66,
+        survival_rate: survivalRate,
         trend: 'up',
         role_history: (p.roleHistory || []).map((rh, idx) => ({
           id: idx + 1,
@@ -605,7 +608,7 @@ app.get('/api/players/:id', async (req, res) => {
     const playerMatchStats = [];
 
     matches.forEach(m => {
-      const s = (m.playerStats || []).find(ps => ps.playerId === playerId);
+      const s = (m.playerStats || []).find(ps => ps.playerId === playerId || (ps.player_name && ps.player_name.toLowerCase() === (player.playerName || '').toLowerCase()));
       if (s) {
         playerMatchStats.push({
           match_id: m.id,
@@ -615,7 +618,8 @@ app.get('/api/players/:id', async (req, res) => {
           kills: s.kills || 0,
           assists: s.assists || 0,
           deaths: s.deaths || 0,
-          survival_percent: s.survivalPercent || 65,
+          damage: s.damage || 0,
+          survival_percent: s.survivalPercent || s.survival_percent || (m.placement === 1 ? 100 : 0),
           date: m.date
         });
       }
@@ -623,7 +627,11 @@ app.get('/api/players/:id', async (req, res) => {
 
     const totalKills = playerMatchStats.reduce((sum, s) => sum + s.kills, 0);
     const totalDeaths = playerMatchStats.reduce((sum, s) => sum + s.deaths, 0);
-    const kd = Number((totalKills / Math.max(1, totalDeaths)).toFixed(1));
+    const totalAssists = playerMatchStats.reduce((sum, s) => sum + s.assists, 0);
+    const totalDamage = playerMatchStats.reduce((sum, s) => sum + (s.damage || 0), 0);
+    const kd = playerMatchStats.length > 0 ? Number((totalKills / Math.max(1, totalDeaths)).toFixed(1)) : 0.0;
+    const avgDamage = playerMatchStats.length > 0 ? Math.round(totalDamage / playerMatchStats.length) : 0;
+    const avgSurvival = playerMatchStats.length > 0 ? Math.round(playerMatchStats.reduce((sum, s) => sum + (s.survival_percent || 0), 0) / playerMatchStats.length) : 0;
 
     res.json({
       player: {
@@ -637,21 +645,27 @@ app.get('/api/players/:id', async (req, res) => {
         matches_count: playerMatchStats.length,
         kd: kd,
         total_kills: totalKills,
-        total_assists: playerMatchStats.reduce((sum, s) => sum + s.assists, 0),
+        total_assists: totalAssists,
         total_deaths: totalDeaths,
-        survival_rate: 67,
+        avg_damage: avgDamage,
+        survival_rate: avgSurvival,
         trend: 'up',
         role_history: player.roleHistory || []
       },
       seven_day_avg_kills: playerMatchStats.length > 0 ? Number((totalKills / playerMatchStats.length).toFixed(1)) : 0,
-      prev_seven_day_avg_kills: 2.1,
-      kills_change_pct: 14.5,
-      consistency_score: 82.5,
-      variance_rating: 'Stable',
+      prev_seven_day_avg_kills: 0,
+      kills_change_pct: 0,
+      damage_change_pct: 0,
+      seven_day_avg_damage: avgDamage,
+      prev_seven_day_avg_damage: 0,
+      consistency_score: playerMatchStats.length > 0 ? 80 : 0,
+      variance_rating: playerMatchStats.length > 0 ? 'Stable' : 'N/A',
       recent_match_performances: playerMatchStats.slice(0, 6),
-      observations: [
+      observations: playerMatchStats.length > 0 ? [
         `High consistency in entry kills across recent ${playerMatchStats.length} games.`,
         `Fulfills ${player.teamRole} positioning objectives with strong communication.`
+      ] : [
+        'No matches recorded yet. Combat telemetry and stats will activate once matches are played.'
       ]
     });
   } catch (err) {
@@ -662,18 +676,29 @@ app.get('/api/players/:id', async (req, res) => {
 // ----------------- TOURNAMENTS & PRACTICE -----------------
 app.get('/api/tournaments', async (req, res) => {
   const tournaments = await db.collection('tournaments').find().sort({ id: -1 }).toArray();
-  res.json(tournaments.map(t => ({
-    id: t.id,
-    name: t.name,
-    date: t.date,
-    status: t.status,
-    notes: t.notes,
-    matches_count: 4,
-    avg_placement: 2.2,
-    total_kills: 36,
-    avg_kills: 9.0,
-    booyah_count: 2
-  })));
+  const allMatches = await db.collection('matches').find({ type: 'Tournament' }).toArray();
+  
+  res.json(tournaments.map(t => {
+    const tMatches = allMatches.filter(m => m.tournament_id === t.id || m.tournamentId === t.id);
+    const mCount = tMatches.length;
+    const tKills = tMatches.reduce((s, m) => s + (m.teamKills || 0), 0);
+    const tBooyah = tMatches.filter(m => m.placement === 1).length;
+    const avgPlace = mCount > 0 ? Number((tMatches.reduce((s, m) => s + (m.placement || 0), 0) / mCount).toFixed(1)) : 0.0;
+    const avgK = mCount > 0 ? Number((tKills / mCount).toFixed(1)) : 0.0;
+
+    return {
+      id: t.id,
+      name: t.name,
+      date: t.date,
+      status: t.status,
+      notes: t.notes,
+      matches_count: mCount,
+      avg_placement: avgPlace,
+      total_kills: tKills,
+      avg_kills: avgK,
+      booyah_count: tBooyah
+    };
+  }));
 });
 
 app.post('/api/tournaments', requireIGL, async (req, res) => {
@@ -765,25 +790,46 @@ app.get('/api/analytics/dashboard', async (req, res) => {
       if (m.placement === 1) booyahCount++;
     });
 
-    const avgKills = matchesCount > 0 ? Number((totalKills / matchesCount).toFixed(1)) : 9.4;
+    const avgKills = matchesCount > 0 ? Number((totalKills / matchesCount).toFixed(1)) : 0.0;
 
-    const formattedPlayers = players.map(p => ({
-      id: p.id,
-      player_name: p.playerName,
-      team_role: p.teamRole,
-      kd: 2.8,
-      total_kills: 24,
-      avatar_url: p.avatarUrl || '/assets/avatar_ash.png',
-      survival_rate: 66
-    }));
+    const formattedPlayers = players.map(p => {
+      let pKills = 0;
+      let pDeaths = 0;
+      let pMatches = 0;
+      let pSurvivalTotal = 0;
+
+      matches.forEach(m => {
+        const ps = (m.playerStats || []).find(s => s.playerId === p.id || (s.player_name && s.player_name.toLowerCase() === (p.playerName || '').toLowerCase()));
+        if (ps) {
+          pMatches++;
+          pKills += ps.kills || 0;
+          pDeaths += ps.deaths || 0;
+          pSurvivalTotal += ps.survivalPercent || ps.survival_percent || (m.placement === 1 ? 100 : 0);
+        }
+      });
+
+      const kd = pMatches > 0 ? Number((pKills / Math.max(1, pDeaths)).toFixed(1)) : 0.0;
+      const survivalRate = pMatches > 0 ? Math.round(pSurvivalTotal / pMatches) : 0;
+
+      return {
+        id: p.id,
+        player_name: p.playerName,
+        team_role: p.teamRole,
+        kd: kd,
+        total_kills: pKills,
+        matches_count: pMatches,
+        avatar_url: p.avatarUrl || '/assets/avatar_ash.png',
+        survival_rate: survivalRate
+      };
+    });
 
     res.json({
-      matches: matchesCount || 8,
-      matches_trend: 2,
+      matches: matchesCount,
+      matches_trend: 0,
       avg_kills: avgKills,
-      avg_kills_trend_pct: 12.0,
-      booyah: booyahCount || 2,
-      booyah_trend: 1,
+      avg_kills_trend_pct: 0,
+      booyah: booyahCount,
+      booyah_trend: 0,
       period: period || 'Today',
       recent_matches: matches.slice(0, 5).map(m => ({
         id: m.id,
@@ -796,8 +842,8 @@ app.get('/api/analytics/dashboard', async (req, res) => {
         notes: m.notes
       })),
       players: formattedPlayers,
-      today_practice_count: 2,
-      today_tournament_count: 1
+      today_practice_count: matches.filter(m => m.type === 'Practice').length,
+      today_tournament_count: matches.filter(m => m.type === 'Tournament').length
     });
   } catch (err) {
     res.status(500).json({ detail: err.message });
@@ -809,89 +855,71 @@ app.get('/api/analytics/daily', async (req, res) => {
   const targetDate = date || '25 Sept 2026';
   const matches = await db.collection('matches').find({ date: { $regex: new RegExp(targetDate, 'i') } }).toArray();
 
+  if (matches.length === 0) {
+    return res.json({
+      date: targetDate,
+      matches_count: 0,
+      avg_kills: 0.0,
+      avg_placement: 0.0,
+      booyah_count: 0,
+      comparison_summary: 'No matches recorded for this date.',
+      team_insights: [],
+      player_insights: []
+    });
+  }
+
   const totalK = matches.reduce((s, m) => s + (m.teamKills || 0), 0);
   const byh = matches.filter(m => m.placement === 1).length;
+  const avgKills = Number((totalK / matches.length).toFixed(1));
+  const avgPlacement = Number((matches.reduce((s, m) => s + (m.placement || 0), 0) / matches.length).toFixed(1));
 
   res.json({
     date: targetDate,
-    matches_count: matches.length || 3,
-    avg_kills: matches.length > 0 ? Number((totalK / matches.length).toFixed(1)) : 9.4,
-    avg_placement: 2.3,
-    booyah_count: byh || 1,
-    comparison_summary: 'Kills: +12% vs prior week cycle | Avg Placement: #2.3',
+    matches_count: matches.length,
+    avg_kills: avgKills,
+    avg_placement: avgPlacement,
+    booyah_count: byh,
+    comparison_summary: `Recorded ${matches.length} matches | Avg Placement: #${avgPlacement}`,
     team_insights: [
       {
         category: 'Team',
-        title: 'Squad Firepower & Kill Conversion',
-        message: 'Averaged 9.4 kills per match across Bermuda and Kalahari engagements today.',
+        title: 'Daily Combat Summary',
+        message: `Averaged ${avgKills} kills per match across ${matches.length} recorded match(es) today.`,
         confidence: 'High',
         is_positive: true,
-        metric_delta: '+12% Kills'
-      },
-      {
-        category: 'Team',
-        title: 'Placement Consistency',
-        message: 'Top-3 finishes secured in 75% of games today with clean compound defense.',
-        confidence: 'High',
-        is_positive: true,
-        metric_delta: '#2.3 Placement'
+        metric_delta: `${avgKills} Avg Kills`
       }
     ],
-    player_insights: [
-      {
-        category: 'Player',
-        title: 'ASH (Primary Rusher)',
-        message: 'High kill conversion rate in entry drop contests.',
-        confidence: 'High',
-        is_positive: true
-      },
-      {
-        category: 'Player',
-        title: 'VEX (Naider)',
-        message: 'Utility assists created clean 2v1 advantages in final circles.',
-        confidence: 'High',
-        is_positive: true
-      }
-    ]
+    player_insights: []
   });
 });
 
 app.get('/api/analytics/weekly', async (req, res) => {
+  const matches = await db.collection('matches').find().toArray();
+  const totalK = matches.reduce((s, m) => s + (m.teamKills || 0), 0);
+  const byh = matches.filter(m => m.placement === 1).length;
+  const avgKills = matches.length > 0 ? Number((totalK / matches.length).toFixed(1)) : 0.0;
+  const avgPlacement = matches.length > 0 ? Number((matches.reduce((s, m) => s + (m.placement || 0), 0) / matches.length).toFixed(1)) : 0.0;
+
   res.json({
-    current_week_label: 'Current Week (Week 2)',
-    previous_week_label: 'Previous Week (Week 1)',
-    current_avg_kills: 9.4,
-    previous_avg_kills: 7.2,
-    current_avg_placement: 2.4,
-    previous_avg_placement: 5.1,
-    current_booyah: 3,
-    previous_booyah: 1,
-    insights: [
+    current_week_label: 'Current Week',
+    previous_week_label: 'Previous Week',
+    current_avg_kills: avgKills,
+    previous_avg_kills: 0.0,
+    current_avg_placement: avgPlacement,
+    previous_avg_placement: 0.0,
+    current_booyah: byh,
+    previous_booyah: 0,
+    insights: matches.length > 0 ? [
       {
         category: 'Team',
-        title: 'Average Kills Progression',
-        message: 'Team kills progressed from 7.2 to 9.4 (+2.2 kills per match).',
+        title: 'Weekly Combat Summary',
+        message: `Current squad average is ${avgKills} kills per match across ${matches.length} matches.`,
         confidence: 'High',
         is_positive: true,
-        metric_delta: '7.2 → 9.4'
-      },
-      {
-        category: 'Team',
-        title: 'Placement Ranking',
-        message: 'Average placement improved significantly from #5.1 to #2.4.',
-        confidence: 'High',
-        is_positive: true,
-        metric_delta: '#5.1 → #2.4'
-      },
-      {
-        category: 'Practice',
-        title: 'Practice Translation Observation',
-        message: 'Performance increased after structured practice sessions focusing on Zone 4 crossfire.',
-        confidence: 'High',
-        is_positive: true,
-        metric_delta: '4 Sessions'
+        metric_delta: `${avgKills} Kills`
       }
-    ],
+    ] : [],
     confidence_note: 'Computed from verified match logs in MongoDB Atlas.'
   });
 });
