@@ -40,7 +40,7 @@ app.get('/', (req, res) => {
           <p>Production Backend Server & MongoDB Atlas Cloud Synchronization for FF Esports Mobile Companion.</p>
           <div class="meta">
             <div class="meta-row"><span class="label">Database:</span> <span>MongoDB Atlas (teamsarkar_db)</span></div>
-            <div class="meta-row"><span class="label">Master Admin:</span> <span>ASHISH800</span></div>
+            <div class="meta-row"><span class="label">Master Admin:</span> <span>ASHISH</span></div>
             <div class="meta-row"><span class="label">Status:</span> <span style="color: #10B981;">Online & Connected</span></div>
           </div>
         </div>
@@ -59,7 +59,7 @@ function hashPassword(password) {
 function isMasterAdmin(userId, email = '') {
   const uid = (userId || '').trim().toLowerCase();
   const em = (email || '').trim().toLowerCase();
-  return uid === 'ashish' || uid === 'ashish800' || em.includes('ashish');
+  return uid === 'ashish' || uid === 'ashish800' || uid === 'ashish8006' || em.includes('ashish');
 }
 
 // Connect to MongoDB Atlas
@@ -92,14 +92,17 @@ async function initDB() {
 
 initDB();
 
-// Middleware to extract user from headers and check master admin ASHISH800
+// Middleware to extract user from headers and check master admin ASHISH
 async function authMiddleware(req, res, next) {
-  const token = req.headers['authorization']?.replace('Bearer ', '') || req.headers['x-user-id'] || '';
-  const userRole = req.headers['x-user-role'] || '';
+  const authHeader = req.headers['authorization']?.replace('Bearer ', '') || '';
+  const userIdHeader = req.headers['x-user-id'] || '';
+  const userRoleHeader = (req.headers['x-user-role'] || '').toUpperCase();
+  const token = (authHeader || userIdHeader || '').trim();
 
-  if (isMasterAdmin(token) || isMasterAdmin(userRole)) {
+  // If user has role IGL or is master admin ASHISH
+  if (userRoleHeader === 'IGL' || isMasterAdmin(token) || isMasterAdmin(userIdHeader)) {
     req.currentUser = {
-      userId: 'ASHISH800',
+      userId: userIdHeader || token || 'ASHISH',
       name: 'Ashish Sarkar',
       role: 'IGL',
       isMaster: true
@@ -115,7 +118,7 @@ async function authMiddleware(req, res, next) {
       ]
     });
     if (foundUser) {
-      if (isMasterAdmin(foundUser.userId, foundUser.email)) {
+      if (isMasterAdmin(foundUser.userId, foundUser.email) || (foundUser.role && foundUser.role.toUpperCase() === 'IGL')) {
         foundUser.role = 'IGL';
         foundUser.isMaster = true;
       }
@@ -125,9 +128,9 @@ async function authMiddleware(req, res, next) {
   }
 
   req.currentUser = {
-    userId: 'GUEST',
+    userId: userIdHeader || 'GUEST',
     name: 'Player',
-    role: 'PLAYER',
+    role: userRoleHeader || 'PLAYER',
     isMaster: false
   };
   next();
@@ -135,13 +138,13 @@ async function authMiddleware(req, res, next) {
 
 app.use(authMiddleware);
 
-// Strict IGL Permission Guard (Checks if user is IGL or master ASHISH800)
+// Strict IGL Permission Guard (Checks if user is IGL or master ASHISH)
 function requireIGL(req, res, next) {
   if (req.currentUser && (req.currentUser.role === 'IGL' || req.currentUser.isMaster || isMasterAdmin(req.currentUser.userId))) {
     return next();
   }
   return res.status(403).json({
-    detail: 'IGL permission required. Only the team IGL or master user (ASHISH800) can perform this action.'
+    detail: 'IGL permission required. Only the team IGL or master user (ASHISH) can perform this action.'
   });
 }
 
@@ -749,7 +752,7 @@ app.get('/api/notes', async (req, res) => {
     note: n.note,
     category: n.category,
     created_at: n.createdAt,
-    author_name: n.authorName || 'ASHISH800 (IGL)'
+    author_name: n.authorName || 'ASHISH (IGL)'
   })));
 });
 
@@ -763,7 +766,7 @@ app.post('/api/notes', requireIGL, async (req, res) => {
     note: note,
     category: category || 'Strategy',
     createdAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-    authorName: req.currentUser.name || 'ASHISH800 (IGL)'
+    authorName: req.currentUser.name || 'ASHISH (IGL)'
   };
   await db.collection('notes').insertOne(newN);
   res.json(newN);
@@ -949,6 +952,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
   console.log(`Team Sarkar Express Server running on port ${PORT}`);
   console.log(`MongoDB Atlas Database: ${DB_NAME}`);
-  console.log(`Master Admin: ASHISH800`);
+  console.log(`Master Admin: ASHISH`);
   console.log(`====================================================`);
 });
